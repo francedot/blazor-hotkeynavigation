@@ -1,0 +1,40 @@
+﻿@page "/counter"
+@implements IDisposable
+@inject HotKeys HotKeys
+
+<h1>Counter</h1>
+
+<p>Press CTRL+E to enter HotKey mode, CTRL+D to exit</p>
+<p>Current count: @currentCount</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+
+@code {
+    private int currentCount = 0;
+
+    private HotKeysContext HotKeysContext;
+
+    protected override void OnInitialized()
+    {
+        this.HotKeysContext = this.HotKeys.CreateContext()
+            .Add(ModKeys.Ctrl, Keys.I, () => this.IncrementCount())
+            .Add(ModKeys.Ctrl, Keys.D, () => this.DecrementCount());
+    }
+
+    private void IncrementCount()
+    {
+        currentCount++;
+        this.StateHasChanged();
+    }
+
+    private void DecrementCount()
+    {
+        currentCount--;
+        this.StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        this.HotKeysContext?.Dispose();
+    }
+}

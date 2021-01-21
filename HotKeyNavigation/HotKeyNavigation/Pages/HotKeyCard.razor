@@ -1,0 +1,95 @@
+﻿@using System.Runtime.InteropServices
+@implements IDisposable
+@inject HotKeys HotKeys
+@inject IJSRuntime jsRuntime
+
+<div id="root" class="product-card" style="margin:4rem">
+    <div class="card" style="width: 60rem;">
+        <img class="card-img-top" src="@imageUrl" alt="Card image cap">
+        <div class="card-body">
+            <h5 class="card-title">Press CTRL+E to enter HotKey mode, CTRL+D to exit. Press CTRL to lose focus from the input textbox.</h5>
+            <h5 class="card-subtitle">@ActionName</h5>
+            <input @ref="PlateInput" type="text" class="form-control" @onkeydown="OnKeyDown">
+            <div class="col-md-8 offset-md-2" style="margin-top:2rem">
+                <a @ref="ButtonA" href="" class="btn btn-primary">Button A</a>
+                <a @ref="ButtonB" style="margin-left:2rem" href="" class="btn btn-primary">Button B</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private HotKeysContext HotKeysContext;
+
+    // Hold a reference to the controls you want to interact through Hot Keys
+    private ElementReference PlateInput;
+    private ElementReference ButtonA;
+    private ElementReference ButtonB;
+
+    // Keep a reference to the element name
+    private Dictionary<string, string> elementMap = new Dictionary<string, string>();
+
+    // Control whether in fast key mode
+    public bool IsHotKeyMode { get; set; } = true;
+
+    private string ActionName;
+
+    private string imageUrl = "https://developingdane.com/content/images/2018/11/blazor.jpg";
+
+    protected override void OnInitialized()
+    {
+        @*TODO Add Keys mapping here. Maybe fetch from json file?*@
+        this.HotKeysContext = this.HotKeys.CreateContext()
+        .Add(ModKeys.Ctrl, Keys.E, () => { IsHotKeyMode = true; })
+        .Add(ModKeys.Ctrl, Keys.D, () => { IsHotKeyMode = false; })
+        .Add(ModKeys.None, Keys.A, () => this.PressButton(ButtonA))
+        .Add(ModKeys.None, Keys.B, () => this.PressButton(ButtonB));
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        // Don't focus on first render to avoid loop
+        if (firstRender)
+        {
+            // To keep the name - only used in ActionName
+            elementMap.Add(PlateInput.Id, nameof(PlateInput));
+            elementMap.Add(ButtonA.Id, nameof(ButtonA));
+            elementMap.Add(ButtonB.Id, nameof(ButtonB));
+            await FocusElement(PlateInput);
+        }
+    }
+
+    private async void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (!args.CtrlKey)
+            return;
+
+        await UnfocusElement(PlateInput);
+    }
+
+    private void PressButton(ElementReference button)
+    {
+        if (!IsHotKeyMode)
+            return;
+
+        ActionName = $"{elementMap[button.Id]} has been pressed";
+
+        this.StateHasChanged();
+    }
+
+    public async Task FocusElement(ElementReference element)
+    {
+        await jsRuntime.InvokeVoidAsync("jsExtensions.focusElement", element);
+    }
+
+    public async Task UnfocusElement(ElementReference element)
+    {
+        await jsRuntime.InvokeVoidAsync("jsExtensions.unFocusElement", element);
+    }
+
+    public void Dispose()
+    {
+        this.HotKeysContext?.Dispose();
+    }
+}
